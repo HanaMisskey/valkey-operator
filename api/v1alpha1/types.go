@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,7 +19,9 @@ import (
 
 // ValkeySpec defines the desired state of Valkey
 type ValkeySpec struct {
-	Version string `json:"version,omitempty"`
+	Version        string                            `json:"version,omitempty"`
+	Image          *ImageProperties                  `json:"image,omitempty"`
+	UpdateStrategy *appsv1.StatefulSetUpdateStrategy `json:"updateStrategy,omitempty"`
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:default=1
 	Replicas                                int `json:"replicas,omitempty"`
@@ -36,8 +39,14 @@ type ValkeySpec struct {
 
 // SentinelProperties models attributes of the sentinel sidecar
 type SentinelProperties struct {
-	Enabled                                 bool `json:"enabled,omitempty"`
+	Enabled                                 bool             `json:"enabled,omitempty"`
+	Image                                   *ImageProperties `json:"image,omitempty"`
 	component.KubernetesContainerProperties `json:",inline"`
+}
+
+type ImageProperties struct {
+	Repository string `json:"repository,omitempty"`
+	Digest     string `json:"digest,omitempty"`
 }
 
 // MetricsProperties models attributes of the metrics exporter sidecar

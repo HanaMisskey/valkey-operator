@@ -15,7 +15,15 @@ fullnameOverride: {{ $fullname }}
 {{- end }}
 
 image:
-  repository: bitnamilegacy/valkey
+  repository: {{ dig "image" "repository" "" . | default "bitnamilegacy/valkey" | quote }}
+  {{- with (dig "image" "repository" "" .) }}
+  {{- if regexMatch "^([^/]*[.:][^/]*|localhost)/" . }}
+  registry: ""
+  {{- end }}
+  {{- end }}
+  {{- with (dig "image" "digest" "" .) }}
+  digest: {{ . | quote }}
+  {{- end }}
   {{- with .Version}}
   tag: {{ . }}
   {{- end }}
@@ -35,6 +43,10 @@ pdb:
 
 primary:
   replicaCount: 1
+  {{- with .updateStrategy }}
+  updateStrategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   {{- with .nodeSelector }}
   nodeSelector:
     {{- toYaml . | nindent 4 }}
@@ -104,6 +116,10 @@ primary:
   
 replica:
   replicaCount: {{ ternary .replicas (max (sub .replicas 1) 0) $sentinelEnabled }}
+  {{- with .updateStrategy }}
+  updateStrategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   {{- with .nodeSelector }}
   nodeSelector:
     {{- toYaml . | nindent 4 }}
@@ -175,7 +191,15 @@ replica:
 sentinel:
   enabled: true
   image:
-    repository: bitnamilegacy/valkey-sentinel
+    repository: {{ dig "sentinel" "image" "repository" "" . | default "bitnamilegacy/valkey-sentinel" | quote }}
+    {{- with (dig "sentinel" "image" "repository" "" .) }}
+    {{- if regexMatch "^([^/]*[.:][^/]*|localhost)/" . }}
+    registry: ""
+    {{- end }}
+    {{- end }}
+    {{- with (dig "sentinel" "image" "digest" "" .) }}
+    digest: {{ . | quote }}
+    {{- end }}
     {{- with .version }}
     tag: {{ . }}
     {{- end }}
