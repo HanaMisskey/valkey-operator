@@ -29,9 +29,55 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: Build and publish image
+      id: build
       uses: docker/build-push-action@v7
       with:
         context: .
         platforms: linux/amd64,linux/arm64
         push: true
         tags: ${{ steps.image.outputs.tag }}
+        outputs: type=oci,dest=${{ runner.temp }}/image.tar
+    - name: Save image metadata
+      env:
+        SOURCE_SHA: ${{ github.sha }}
+        IMAGE_TAG: ${{ steps.image.outputs.tag }}
+        BUILD_DIGEST: ${{ steps.build.outputs.digest }}
+        BUILD_METADATA: ${{ steps.build.outputs.metadata }}
+        ARTIFACT_DIRECTORY: ${{ runner.temp }}
+      run: |
+        python3 - <<'PYTHON'
+        import hashlib
+        import json
+        import os
+        from pathlib import Path
+        import subprocess
+        import tarfile
+
+        directory = Path(os.environ['ARTIFACT_DIRECTORY'])
+        with tarfile.open(directory / 'image.tar') as archive:
+            index_bytes = archive.extractfile('index.json').read()
+        index = json.loads(index_bytes)
+        registry = json.loads(subprocess.check_output([
+            'docker', 'buildx', 'imagetools', 'inspect', os.environ['IMAGE_TAG'],
+            '--format', '{{json .Manifest}}',
+        ], text=True))
+        metadata = {
+            'source_sha': os.environ['SOURCE_SHA'],
+            'image_tag': os.environ['IMAGE_TAG'],
+            'build_output_digest': os.environ['BUILD_DIGEST'],
+            'build_metadata': json.loads(os.environ['BUILD_METADATA']),
+            'oci_index_digest': 'sha256:' + hashlib.sha256(index_bytes).hexdigest(),
+            'oci_root_manifests': index['manifests'],
+            'registry_root_digest': registry['digest'],
+        }
+        (directory / 'image-metadata.json').write_text(json.dumps(metadata, indent=2) + '\n')
+        PYTHON
+    - name: Upload image archive and metadata
+      uses: actions/upload-artifact@v7
+      with:
+        name: image-${{ github.sha }}
+        path: |
+          ${{ runner.temp }}/image.tar
+          ${{ runner.temp }}/image-metadata.json
+        if-no-files-found: error
+        compression-level: 0
