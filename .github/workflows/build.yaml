@@ -4,12 +4,10 @@ on:
   push:
     branches:
     - main
-    - codex/per-valkey-image-digests
 
   pull_request:
     branches:
     - main
-    - codex/per-valkey-image-digests
 
 concurrency: build-${{ github.ref }}
 
