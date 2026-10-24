@@ -10,6 +10,7 @@ import (
 	"flag"
 
 	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -94,8 +95,8 @@ func (o *Operator) ValidateFlags() error {
 }
 
 func (o *Operator) GetUncacheableTypes() []client.Object {
-	// Add types which should bypass informer caching.
-	return []client.Object{&operatorv1alpha1.Valkey{}}
+	// Cached Secret reads would require cluster-wide list/watch permission and cache Secrets from other namespaces.
+	return []client.Object{&operatorv1alpha1.Valkey{}, &corev1.Secret{}}
 }
 
 func (o *Operator) Setup(mgr ctrl.Manager) error {
